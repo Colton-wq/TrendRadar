@@ -42,7 +42,8 @@ jobs:
         
     - name: Run GitHub Project Monitor
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 修正：使用 GH_TOKEN 而不是 GITHUB_TOKEN
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         MODELSCOPE_API_KEY: ${{ secrets.MODELSCOPE_API_KEY }}
         FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
         WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
