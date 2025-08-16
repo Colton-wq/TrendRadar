@@ -111,3 +111,24 @@ ai
 宇宙
 飞船
 航空
+
+mcp
+mcp工具
+MCP
+MCP工具
+
+augment code
+Augment Code
+cursor
+Cursor
+
+大模型
+llm
+LLM
+agent
+Agent
+工作流
+
+数码
+小米
+Xiaomi
