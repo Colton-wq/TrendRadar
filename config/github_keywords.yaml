@@ -1,0 +1,221 @@
+# GitHub项目监控关键词配置
+# 支持必须词(+词汇)和过滤词(!词汇)语法
+
+github_monitoring:
+  # AI与机器学习类
+  ai_ml:
+    keywords: 
+      - "machine learning"
+      - "deep learning" 
+      - "neural network"
+      - "artificial intelligence"
+      - "transformer"
+      - "llm"
+      - "large language model"
+    must_have:
+      - "+ai"
+      - "+model"
+      - "+learning"
+    exclude:
+      - "!tutorial"
+      - "!course" 
+      - "!homework"
+      - "!assignment"
+    min_stars: 10
+    languages: ["Python", "PyTorch", "TensorFlow"]
+    
+  # MCP工具与开发类  
+  mcp_tools:
+    keywords:
+      - "mcp"
+      - "model context protocol"
+      - "claude"
+      - "anthropic"
+      - "augment code"
+      - "cursor"
+      - "ai assistant"
+    must_have:
+      - "+tool"
+      - "+mcp"
+      - "+protocol"
+    exclude:
+      - "!demo"
+      - "!example"
+    min_stars: 5
+    languages: ["Python", "TypeScript", "JavaScript"]
+    
+  # Web开发框架类
+  web_development:
+    keywords:
+      - "react"
+      - "vue"
+      - "angular" 
+      - "nextjs"
+      - "nuxt"
+      - "svelte"
+      - "web framework"
+    must_have:
+      - "+framework"
+      - "+component"
+      - "+ui"
+    exclude:
+      - "!template"
+      - "!boilerplate"
+      - "!starter"
+    min_stars: 20
+    languages: ["JavaScript", "TypeScript", "Vue", "React"]
+    
+  # 移动开发类
+  mobile_development:
+    keywords:
+      - "react native"
+      - "flutter"
+      - "swift"
+      - "kotlin"
+      - "android"
+      - "ios"
+      - "mobile app"
+    must_have:
+      - "+mobile"
+      - "+app"
+    exclude:
+      - "!tutorial"
+      - "!demo"
+    min_stars: 15
+    languages: ["Swift", "Kotlin", "Dart", "Java"]
+    
+  # DevOps与云原生类
+  devops_cloud:
+    keywords:
+      - "kubernetes"
+      - "docker"
+      - "terraform"
+      - "ansible"
+      - "jenkins"
+      - "github actions"
+      - "ci/cd"
+      - "microservices"
+    must_have:
+      - "+devops"
+      - "+cloud"
+      - "+deployment"
+    exclude:
+      - "!tutorial"
+      - "!learning"
+    min_stars: 25
+    languages: ["Go", "Python", "Shell", "YAML"]
+    
+  # 区块链与Web3类
+  blockchain_web3:
+    keywords:
+      - "blockchain"
+      - "ethereum"
+      - "solidity"
+      - "web3"
+      - "defi"
+      - "nft"
+      - "smart contract"
+    must_have:
+      - "+blockchain"
+      - "+crypto"
+      - "+web3"
+    exclude:
+      - "!scam"
+      - "!pump"
+      - "!meme"
+    min_stars: 10
+    languages: ["Solidity", "JavaScript", "Rust", "Go"]
+    
+  # 数据科学与分析类
+  data_science:
+    keywords:
+      - "data science"
+      - "data analysis"
+      - "pandas"
+      - "numpy"
+      - "jupyter"
+      - "visualization"
+      - "statistics"
+    must_have:
+      - "+data"
+      - "+analysis"
+      - "+science"
+    exclude:
+      - "!tutorial"
+      - "!course"
+    min_stars: 15
+    languages: ["Python", "R", "Julia", "SQL"]
+    
+  # 游戏开发类
+  game_development:
+    keywords:
+      - "game engine"
+      - "unity"
+      - "unreal"
+      - "godot"
+      - "game development"
+      - "indie game"
+    must_have:
+      - "+game"
+      - "+engine"
+    exclude:
+      - "!asset"
+      - "!tutorial"
+    min_stars: 20
+    languages: ["C#", "C++", "GDScript", "Lua"]
+    
+  # 系统编程类
+  systems_programming:
+    keywords:
+      - "operating system"
+      - "kernel"
+      - "embedded"
+      - "firmware"
+      - "driver"
+      - "low level"
+    must_have:
+      - "+system"
+      - "+kernel"
+      - "+embedded"
+    exclude:
+      - "!tutorial"
+      - "!learning"
+    min_stars: 30
+    languages: ["C", "C++", "Rust", "Assembly"]
+    
+  # 安全与隐私类
+  security_privacy:
+    keywords:
+      - "cybersecurity"
+      - "penetration testing"
+      - "vulnerability"
+      - "encryption"
+      - "privacy"
+      - "security tool"
+    must_have:
+      - "+security"
+      - "+privacy"
+      - "+tool"
+    exclude:
+      - "!malware"
+      - "!hack"
+    min_stars: 10
+    languages: ["Python", "C", "Go", "Shell"]
+
+# 全局配置
+global_settings:
+  # 监控频率（分钟）
+  check_interval: 60
+  
+  # 每次最大处理项目数
+  max_projects_per_run: 50
+  
+  # API调用安全间隔（秒）
+  api_call_interval: 2
+  
+  # 项目质量过滤
+  quality_filters:
+    min_description_length: 20
+    require_license: false
+    require_readme: true
+    min_commit_count: 5
