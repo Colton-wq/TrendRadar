@@ -24,8 +24,8 @@ GitHub API → 关键词匹配 → AI质量分析 → 去重存储 → 多渠道
 
 **必需的GitHub Secrets配置**:
 ```bash
-# GitHub API访问（必需）
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+# GitHub API访问（必需）- 注意：不能使用GITHUB_开头的名称
+GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 # ModelScope AI分析（可选，提升分析质量）
 MODELSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
@@ -38,6 +38,8 @@ TELEGRAM_BOT_TOKEN=123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ
 TELEGRAM_CHAT_ID=-1001234567890
 ```
 
+⚠️ **重要提示**: GitHub Secrets名称不能以 `GITHUB_` 开头，这是GitHub的保留前缀。因此我们使用 `GH_TOKEN` 而不是 `GITHUB_TOKEN`。
+
 ### 2. 配置GitHub Token
 
 1. 访问 [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
@@ -45,7 +47,7 @@ TELEGRAM_CHAT_ID=-1001234567890
 3. 选择权限：
    - ✅ `public_repo` (访问公共仓库)
    - ✅ `read:user` (读取用户信息)
-4. 复制生成的token到 `GITHUB_TOKEN` Secret
+4. 复制生成的token到 `GH_TOKEN` Secret
 
 ### 3. 配置推送渠道
 
@@ -199,7 +201,7 @@ ModelScope API按token计费：
 #### 1. GitHub API限制
 **问题**: API调用超限
 **解决**: 
-- 检查 `GITHUB_TOKEN` 是否正确配置
+- 检查 `GH_TOKEN` 是否正确配置
 - 降低监控频率或减少关键词数量
 - 使用GitHub App Token提高限制
 
@@ -217,6 +219,12 @@ ModelScope API按token计费：
 - 确认账户余额充足
 - 系统会自动降级到本地分析
 
+#### 4. Secret配置错误
+**问题**: Secret名称以GITHUB_开头
+**解决**:
+- 使用 `GH_TOKEN` 而不是 `GITHUB_TOKEN`
+- GitHub保留所有 `GITHUB_` 前缀的环境变量
+
 ### 调试方法
 
 #### 查看运行日志
@@ -227,6 +235,7 @@ ModelScope API按token计费：
 #### 手动测试
 ```bash
 # 本地测试
+export GITHUB_TOKEN=your_token_here
 python github_monitor.py
 
 # 测试特定类别
@@ -293,4 +302,4 @@ FORCE_RUN=true python github_monitor.py
 ---
 
 **最后更新**: 2025-08-16
-**版本**: v1.0.0
+**版本**: v1.0.1 (修正Secret配置)
