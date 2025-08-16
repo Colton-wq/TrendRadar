@@ -24,6 +24,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        # 获取完整历史以避免推送冲突
+        fetch-depth: 0
+        token: ${{ secrets.GH_TOKEN }}
       
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -73,10 +77,13 @@ jobs:
         echo "- 支持类别: AI/ML, MCP工具, Web开发, 移动开发, DevOps等" >> output/github_monitor_report.md
         echo "- AI分析: ModelScope Qwen3-Coder集成" >> output/github_monitor_report.md
         
-    - name: Commit and push results
+    - name: Pull latest changes and commit results
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+        # 先拉取最新更改以避免冲突
+        git pull origin master --rebase || git pull origin master
         
         # 提交数据文件（如果有变化）
         if [ -f "data/seen_github_projects.json" ]; then
@@ -90,19 +97,20 @@ jobs:
         if git diff --staged --quiet; then
           echo "没有新的监控数据需要提交"
         else
-          git commit -m "GitHub项目监控: $(date '+%Y-%m-%d %H:%M')"
-          git push
+          git commit -m "GitHub项目监控: $(date '+%Y-%m-%d %H:%M')" || echo "提交失败，可能没有变化"
+          git push origin master || echo "推送失败，将在artifacts中保存结果"
         fi
         
     - name: Upload monitoring artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: github-monitor-results
+        name: github-monitor-results-${{ github.run_number }}
         path: |
           output/
           data/seen_github_projects.json
         retention-days: 30
+        compression-level: 6
         
     - name: Notify on failure
       if: failure()
@@ -115,7 +123,27 @@ jobs:
             -d '{
               "msgtype": "text",
               "text": {
-                "content": "⚠️ GitHub项目监控任务失败\n时间: '"$(date)"'\n请检查GitHub Actions日志"
+                "content": "⚠️ GitHub项目监控任务失败\n时间: '"$(date)"'\n运行编号: ${{ github.run_number }}\n请检查GitHub Actions日志"
               }
             }'
+        fi
+        
+    - name: Notify on success
+      if: success()
+      env:
+        WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
+      run: |
+        if [ -n "$WEWORK_WEBHOOK_URL" ]; then
+          # 检查是否有新项目被发现
+          if [ -f "output/github_monitor_report.md" ]; then
+            project_count=$(cat data/seen_github_projects.json | jq length 2>/dev/null || echo "0")
+            curl -X POST "$WEWORK_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "msgtype": "text",
+                "text": {
+                  "content": "✅ GitHub项目监控完成\n时间: '"$(date)"'\n已监控项目总数: '"$project_count"'\n运行编号: ${{ github.run_number }}"
+                }
+              }'
+          fi
         fi
