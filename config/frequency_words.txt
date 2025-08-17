@@ -1,134 +1,209 @@
-胖东来
-于东来
+# AI开发工具与平台
+mcp
+MCP
+mcp工具
+MCP工具
+augment code
+Augment Code
+cursor
+Cursor
++工具
++开发
++编程
+!广告
+!培训
 
+# 大模型与AI技术
+chatgpt
+ChatGPT
+openai
+OpenAI
+sora
+claude
+Claude
+Anthropic
+gemini
+Gemini
+deepmind
+DeepMind
 DeepSeek
 梁文锋
+大模型
+llm
+LLM
++技术
++发布
++更新
+!股价
+!炒作
 
+# AI应用与智能化
+ai
+AI
+人工智能
+agent
+Agent
+工作流
+自动驾驶
+机器人
++应用
++突破
++发展
+!gai
+!假
+!骗局
+
+# 科技巨头与创新企业
 华为
 鸿蒙
 HarmonyOS
 任正非
+微软
+Microsoft
+谷歌
+google
+英伟达
+NVIDIA
+黄仁勋
+AMD
++技术
++发布
++合作
+!股票
+!传闻
 
-比亚迪
-王传福
+# 数码科技与消费电子
+数码
+小米
+Xiaomi
+iphone
+iPhone
+ipad
+iPad
+mac
+Mac
+ios
+iOS
++新品
++发布
++技术
+!价格
+!促销
+!假货
 
+# 新兴科技企业
+字节
+bytedance
+ByteDance
+张一鸣
 大疆
 DJI
-
 宇树
 王兴兴
-
 智元
 灵犀
 稚晖君
 彭志辉
++创新
++技术
++产品
+!八卦
+!传闻
 
-黑神话
-冯骥
-
-影之刃零
-梁其伟
-
-哪吒
-饺子
-杨宇
-!车
-!餐
-
-三体
-流浪地球
-刘慈欣
-郭帆
-
-申奥
-
-京东
-刘强东
-
-字节
-bytedance
-张一鸣
-
+# 电动汽车与新能源
 特斯拉
+Tesla
 马斯克
+比亚迪
+王传福
++技术
++发布
++销量
+!股价
+!炒作
 
-微软
-Microsoft
-
-英伟达
-NVIDIA
-黄仁勋
-
-AMD
-
-谷歌
-google
-gemini
-deepmind
-
-chatgpt
-openai
-sora
-
-claude
-Anthropic
-
-iphone
-ipad
-mac
-ios
-
-ai
-!gai
-人工智能
-
-自动驾驶
-
-机器人
-
-国产
-中国
-
-美国
-日本
-韩国
-
+# 芯片与硬件技术
 芯片
 光刻机
++技术
++突破
++制造
+!概念
+!炒作
 
-科技
-
-核能
-
-水电站
-雅鲁藏布江
-
-新质生产力
-
+# 航空航天与前沿科技
 月球
 登月
 火星
 宇宙
 飞船
 航空
+核能
++技术
++突破
++发展
+!概念
 
-mcp
-mcp工具
-MCP
-MCP工具
+# 国产科技与创新
+国产
+中国
+新质生产力
++科技
++创新
++突破
+!政治
+!争议
 
-augment code
-Augment Code
-cursor
-Cursor
+# 娱乐科技与数字内容
+黑神话
+冯骥
+影之刃零
+梁其伟
+哪吒
+饺子
+杨宇
+三体
+流浪地球
+刘慈欣
+郭帆
++游戏
++技术
++制作
+!车
+!餐
+!八卦
 
-大模型
-llm
-LLM
-agent
-Agent
-工作流
+# 电商与数字经济
+京东
+刘强东
+胖东来
+于东来
++技术
++创新
++发展
+!八卦
+!传闻
 
-数码
-小米
-Xiaomi
+# 基础设施与工程技术
+水电站
+雅鲁藏布江
++建设
++技术
++工程
+!争议
+
+# 国际科技动态
+美国
+日本
+韩国
++科技
++技术
++合作
+!政治
+!争议
+
+# 其他重要人物与事件
+申奥
++科技
++创新
+!政治
