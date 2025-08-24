@@ -46,6 +46,56 @@ weight:
   frequency_weight: 0.3 # 频次权重
   hotness_weight: 0.1 # 热度权重
 
+# 🔸 黄金价格监控配置
+# 支持多个免费API数据源，实现实时价格监控和异常预警
+gold_monitor:
+  enabled: false # 是否启用黄金价格监控功能
+  
+  # API配置 - 免费API密钥配置
+  api_keys:
+    goldapi_key: "" # GoldAPI.io API密钥 (免费100次/月)
+    jisu_api_key: "" # 极速数据API密钥 (免费100次/天)
+  
+  # 监控配置
+  monitoring:
+    symbols: ["XAUUSD", "AU9999"] # 监控的黄金品种
+    update_interval: 3600 # 价格更新间隔(秒) - 1小时
+    cache_ttl: 300 # 数据缓存时间(秒) - 5分钟
+    max_history_size: 100 # 最大历史数据保存数量
+  
+  # 预警配置
+  alerts:
+    enabled: true # 是否启用价格预警
+    
+    # 预警阈值配置
+    thresholds:
+      minor_change: 2.0 # 轻微变动阈值(%)
+      major_change: 5.0 # 重大变动阈值(%)
+      critical_change: 10.0 # 严重变动阈值(%)
+      volatility_threshold: 3.0 # 波动率预警阈值(%)
+    
+    # 全局预警设置
+    global_settings:
+      notification_cooldown: 300 # 相同预警冷却时间(秒)
+      max_alerts_per_hour: 10 # 每小时最大预警数量
+      quiet_hours:
+        enabled: false # 是否启用静默时间
+        start: "22:00" # 静默开始时间
+        end: "08:00" # 静默结束时间
+  
+  # 报告配置
+  reporting:
+    include_in_main_report: true # 是否包含在主报告中
+    generate_charts: true # 是否生成价格图表
+    chart_time_range: 24 # 图表时间范围(小时)
+    
+  # 通知配置
+  notifications:
+    use_main_channels: true # 使用主通知渠道
+    custom_template: false # 是否使用自定义消息模板
+    include_trend_analysis: true # 是否包含趋势分析
+    include_price_history: true # 是否包含价格历史
+
 # 增加无聊的小知识
 # 这里的 name 你可以定义任意名称，只具有显示作用，不会影响数据的处理
 platforms:
