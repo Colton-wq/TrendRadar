@@ -1,14 +1,36 @@
-name: Hot News Crawler
+name: TrendRadar Crawler & Gold Monitor
 
 on:
   schedule:
     # 我们使用的是 github 官方提供的资源来进行的推送，而每个账号的资源是限额的，为了不被官方判定为滥用而面临封号的风险，不建议比半小时更低
     - cron: "0 * * * *" # 每小时整点运行一次(实际有偏差) 或者 "*/30 * * * *" (每半小时执行一次) 或者 "*/30 0-14 * * *"(每天早上 8 点到晚上 10 点期间，每半小时运行一次)
   workflow_dispatch:
+    inputs:
+      enable_gold_monitor:
+        description: 'Enable Gold Price Monitoring'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      gold_monitor_only:
+        description: 'Run Gold Monitor Only (skip news crawler)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 # 添加权限设置
 permissions:
   contents: write
+
+env:
+  # Gold Monitor Configuration
+  ENABLE_GOLD_MONITOR: ${{ github.event.inputs.enable_gold_monitor || 'true' }}
+  GOLD_MONITOR_ONLY: ${{ github.event.inputs.gold_monitor_only || 'false' }}
 
 jobs:
   crawl:
@@ -46,7 +68,54 @@ jobs:
 
           echo "✅ 配置文件检查通过"
 
-      - name: Run crawler
+      - name: Verify Gold Monitor Configuration
+        if: env.ENABLE_GOLD_MONITOR == 'true'
+        run: |
+          echo "🔍 检查黄金监控配置..."
+          
+          # Check if gold monitor module exists
+          if [ ! -d "src/gold_monitor" ]; then
+            echo "❌ 错误: src/gold_monitor 目录不存在"
+            echo "请确保黄金监控模块已正确安装"
+            exit 1
+          fi
+          
+          # Check if gold monitor is enabled in config
+          python -c "
+          import yaml
+          import sys
+          
+          try:
+              with open('config/config.yaml', 'r', encoding='utf-8') as f:
+                  config = yaml.safe_load(f)
+              
+              gold_config = config.get('gold_monitor', {})
+              if not gold_config:
+                  print('⚠️  警告: config.yaml 中未找到 gold_monitor 配置段')
+                  sys.exit(0)
+              
+              if not gold_config.get('enabled', False):
+                  print('⚠️  警告: 黄金监控功能在配置中被禁用')
+                  print('提示: 设置 gold_monitor.enabled = true 来启用')
+                  sys.exit(0)
+              
+              # Check API keys
+              api_keys = gold_config.get('api_keys', {})
+              has_keys = any(api_keys.get(key) for key in ['goldapi_key', 'jisu_api_key'])
+              
+              if not has_keys:
+                  print('⚠️  警告: 未配置黄金价格API密钥')
+                  print('提示: 在 gold_monitor.api_keys 中配置 goldapi_key 或 jisu_api_key')
+              else:
+                  print('✅ 黄金监控配置检查通过')
+          
+          except Exception as e:
+              print(f'❌ 配置检查失败: {e}')
+              sys.exit(1)
+          "
+
+      - name: Run News Crawler
+        if: env.GOLD_MONITOR_ONLY != 'true'
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -54,11 +123,311 @@ jobs:
           DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
           WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
           GITHUB_ACTIONS: true
-        run: python main.py
+        run: |
+          echo "📰 开始执行新闻爬取任务..."
+          python main.py
+
+      - name: Run Gold Price Monitor
+        if: env.ENABLE_GOLD_MONITOR == 'true'
+        env:
+          # Notification webhooks (reuse from main crawler)
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+          WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
+          
+          # Gold Monitor specific API keys
+          GOLDAPI_KEY: ${{ secrets.GOLDAPI_KEY }}
+          JISU_API_KEY: ${{ secrets.JISU_API_KEY }}
+          
+          # Runtime flags
+          GITHUB_ACTIONS: true
+          GOLD_MONITOR_MODE: true
+        run: |
+          echo "💰 开始执行黄金价格监控任务..."
+          
+          # Create gold monitor runner script
+          cat > run_gold_monitor.py << 'EOF'
+          #!/usr/bin/env python3
+          """
+          Gold Monitor Runner for GitHub Actions
+          
+          This script runs the gold price monitoring functionality
+          independently or alongside the main TrendRadar crawler.
+          """
+          
+          import os
+          import sys
+          import logging
+          import yaml
+          from datetime import datetime
+          
+          # Add src directory to path
+          sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+          
+          def setup_logging():
+              """Setup logging for GitHub Actions"""
+              logging.basicConfig(
+                  level=logging.INFO,
+                  format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                  handlers=[
+                      logging.StreamHandler(sys.stdout)
+                  ]
+              )
+              return logging.getLogger(__name__)
+          
+          def load_config():
+              """Load configuration from config.yaml"""
+              try:
+                  with open('config/config.yaml', 'r', encoding='utf-8') as f:
+                      config = yaml.safe_load(f)
+                  return config
+              except Exception as e:
+                  print(f"❌ 配置加载失败: {e}")
+                  return None
+          
+          def update_config_with_env(config):
+              """Update configuration with environment variables"""
+              if not config:
+                  return None
+              
+              # Update API keys from environment variables
+              gold_config = config.setdefault('gold_monitor', {})
+              api_keys = gold_config.setdefault('api_keys', {})
+              
+              if os.getenv('GOLDAPI_KEY'):
+                  api_keys['goldapi_key'] = os.getenv('GOLDAPI_KEY')
+                  print("✅ GoldAPI密钥已从环境变量加载")
+              
+              if os.getenv('JISU_API_KEY'):
+                  api_keys['jisu_api_key'] = os.getenv('JISU_API_KEY')
+                  print("✅ 极速数据API密钥已从环境变量加载")
+              
+              # Update notification webhooks
+              notification_config = config.setdefault('notification', {})
+              webhooks = notification_config.setdefault('webhooks', {})
+              
+              env_webhooks = {
+                  'feishu_url': 'FEISHU_WEBHOOK_URL',
+                  'dingtalk_url': 'DINGTALK_WEBHOOK_URL',
+                  'wework_url': 'WEWORK_WEBHOOK_URL',
+                  'telegram_bot_token': 'TELEGRAM_BOT_TOKEN',
+                  'telegram_chat_id': 'TELEGRAM_CHAT_ID'
+              }
+              
+              for config_key, env_key in env_webhooks.items():
+                  if os.getenv(env_key):
+                      webhooks[config_key] = os.getenv(env_key)
+              
+              return config
+          
+          def run_gold_monitor():
+              """Run gold price monitoring"""
+              logger = setup_logging()
+              logger.info("🚀 启动黄金价格监控系统...")
+              
+              try:
+                  # Load and update configuration
+                  config = load_config()
+                  if not config:
+                      logger.error("❌ 无法加载配置文件")
+                      return False
+                  
+                  config = update_config_with_env(config)
+                  gold_config = config.get('gold_monitor', {})
+                  
+                  if not gold_config.get('enabled', False):
+                      logger.warning("⚠️  黄金监控功能未启用")
+                      return True
+                  
+                  # Import gold monitor modules
+                  from gold_monitor import (
+                      GoldPriceCollector, 
+                      PriceAnalyzer, 
+                      GoldNotificationManager
+                  )
+                  
+                  # Initialize components
+                  logger.info("📊 初始化黄金价格采集器...")
+                  collector_config = {
+                      'goldapi_key': gold_config.get('api_keys', {}).get('goldapi_key', ''),
+                      'jisu_api_key': gold_config.get('api_keys', {}).get('jisu_api_key', ''),
+                      'cache_ttl': gold_config.get('monitoring', {}).get('cache_ttl', 300)
+                  }
+                  collector = GoldPriceCollector(collector_config)
+                  
+                  logger.info("📈 初始化价格分析器...")
+                  analyzer_config = gold_config.get('alerts', {}).get('thresholds', {})
+                  analyzer = PriceAnalyzer(analyzer_config)
+                  
+                  logger.info("📱 初始化通知管理器...")
+                  notification_config = config.get('notification', {}).get('webhooks', {})
+                  notification_manager = GoldNotificationManager(notification_config)
+                  
+                  # Test connectivity
+                  logger.info("🔗 测试API连接...")
+                  health = collector.health_check()
+                  healthy_apis = sum(1 for status in health.values() if status)
+                  total_apis = len(health)
+                  logger.info(f"API健康状态: {healthy_apis}/{total_apis} 正常")
+                  
+                  if healthy_apis == 0:
+                      logger.warning("⚠️  所有API连接失败，请检查API密钥配置")
+                      return True  # Don't fail the workflow
+                  
+                  # Collect price data
+                  logger.info("💰 采集黄金价格数据...")
+                  prices = collector.get_gold_prices()
+                  
+                  if not prices:
+                      logger.warning("⚠️  未获取到价格数据")
+                      return True
+                  
+                  logger.info(f"✅ 成功获取 {len(prices)} 个品种的价格数据")
+                  
+                  # Analyze prices and check for alerts
+                  alerts = []
+                  for symbol, price_data in prices.items():
+                      logger.info(f"📊 分析 {symbol}: ${price_data.price:.2f} {price_data.currency}")
+                      
+                      # Add to analyzer
+                      analyzer.add_price_data(price_data)
+                      
+                      # Check for alerts
+                      symbol_alerts = analyzer.check_alerts(symbol)
+                      alerts.extend(symbol_alerts)
+                  
+                  # Send notifications
+                  if alerts:
+                      logger.info(f"🚨 发现 {len(alerts)} 个价格预警")
+                      for alert in alerts:
+                          logger.info(f"  - {alert.severity.upper()}: {alert.message}")
+                      
+                      # Send alert notifications
+                      success_count = notification_manager.notify_batch_alerts(alerts)
+                      logger.info(f"📱 预警通知发送成功: {success_count} 条")
+                  else:
+                      logger.info("✅ 当前无价格预警")
+                  
+                  # Generate and send summary
+                  summaries = analyzer.get_all_summaries()
+                  if summaries:
+                      logger.info("📋 发送价格摘要...")
+                      summary_success = notification_manager.notify_summary(summaries)
+                      if summary_success:
+                          logger.info("✅ 价格摘要发送成功")
+                      else:
+                          logger.warning("⚠️  价格摘要发送失败")
+                  
+                  logger.info("🎉 黄金价格监控任务完成")
+                  return True
+                  
+              except ImportError as e:
+                  logger.error(f"❌ 模块导入失败: {e}")
+                  logger.error("请确保黄金监控模块已正确安装")
+                  return False
+              except Exception as e:
+                  logger.error(f"❌ 黄金监控执行失败: {e}")
+                  import traceback
+                  traceback.print_exc()
+                  return False
+          
+          if __name__ == "__main__":
+              success = run_gold_monitor()
+              if not success:
+                  print("❌ 黄金监控任务失败")
+                  sys.exit(1)
+              else:
+                  print("✅ 黄金监控任务成功完成")
+          EOF
+          
+          # Run the gold monitor
+          python run_gold_monitor.py
+
+      - name: Generate Combined Report
+        if: env.ENABLE_GOLD_MONITOR == 'true' && env.GOLD_MONITOR_ONLY != 'true'
+        run: |
+          echo "📊 生成综合报告..."
+          
+          # Create combined report generator
+          cat > generate_combined_report.py << 'EOF'
+          #!/usr/bin/env python3
+          """
+          Combined Report Generator
+          
+          Generates a combined report including both news trends and gold price monitoring.
+          """
+          
+          import os
+          import sys
+          import yaml
+          from datetime import datetime
+          
+          # Add src directory to path
+          sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+          
+          def generate_combined_report():
+              """Generate combined HTML report"""
+              try:
+                  # Check if both reports exist
+                  news_report_exists = os.path.exists('index.html')
+                  
+                  print(f"📰 新闻报告存在: {news_report_exists}")
+                  
+                  if news_report_exists:
+                      print("📊 检测到现有新闻报告，黄金监控数据已集成到主报告中")
+                  else:
+                      print("⚠️  未找到新闻报告，仅生成黄金监控报告")
+                  
+                  print("✅ 报告生成完成")
+                  return True
+                  
+              except Exception as e:
+                  print(f"❌ 报告生成失败: {e}")
+                  return False
+          
+          if __name__ == "__main__":
+              success = generate_combined_report()
+              if not success:
+                  sys.exit(1)
+          EOF
+          
+          python generate_combined_report.py
 
       - name: Commit and push if changes
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
           git add -A
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update by GitHub Actions at $(TZ=Asia/Shanghai date)" && git push)
+          
+          # Check if there are any changes to commit
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "📝 没有检测到文件变更，跳过提交"
+          else
+            # Create commit message based on what ran
+            COMMIT_MSG="Auto update by GitHub Actions at $(TZ=Asia/Shanghai date)"
+            
+            if [ "$ENABLE_GOLD_MONITOR" = "true" ] && [ "$GOLD_MONITOR_ONLY" != "true" ]; then
+              COMMIT_MSG="$COMMIT_MSG - News + Gold Monitor"
+            elif [ "$ENABLE_GOLD_MONITOR" = "true" ] && [ "$GOLD_MONITOR_ONLY" = "true" ]; then
+              COMMIT_MSG="$COMMIT_MSG - Gold Monitor Only"
+            else
+              COMMIT_MSG="$COMMIT_MSG - News Only"
+            fi
+            
+            git commit -m "$COMMIT_MSG"
+            git push
+            echo "✅ 变更已提交并推送"
+          fi
+
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "📋 工作流执行摘要"
+          echo "=================="
+          echo "🕐 执行时间: $(TZ=Asia/Shanghai date)"
+          echo "📰 新闻爬取: ${{ env.GOLD_MONITOR_ONLY != 'true' && '✅ 已执行' || '⏭️ 已跳过' }}"
+          echo "💰 黄金监控: ${{ env.ENABLE_GOLD_MONITOR == 'true' && '✅ 已执行' || '⏭️ 已跳过' }}"
+          echo "🔄 执行模式: ${{ env.GOLD_MONITOR_ONLY == 'true' && '仅黄金监控' || (env.ENABLE_GOLD_MONITOR == 'true' && '新闻+黄金监控' || '仅新闻爬取') }}"
+          echo "=================="
