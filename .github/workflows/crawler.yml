@@ -13,6 +13,7 @@ permissions:
 jobs:
   crawl:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # 增加超时时间以支持Playwright安装
 
     steps:
       - name: Checkout repository
@@ -23,10 +24,42 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install dependencies
+      - name: Set up Node.js for Playwright
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          echo "🎭 安装Playwright浏览器..."
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Verify Playwright installation
+        run: |
+          echo "🔍 验证Playwright安装..."
+          python -c "
+          try:
+              from playwright.sync_api import sync_playwright
+              print('✅ Playwright同步API导入成功')
+          except ImportError as e:
+              print(f'❌ Playwright同步API导入失败: {e}')
+              exit(1)
+          
+          try:
+              from playwright.async_api import async_playwright
+              print('✅ Playwright异步API导入成功')
+          except ImportError as e:
+              print(f'❌ Playwright异步API导入失败: {e}')
+              exit(1)
+          
+          print('✅ Playwright安装验证通过')
+          "
 
       - name: Verify required files
         run: |
@@ -46,6 +79,40 @@ jobs:
 
           echo "✅ 配置文件检查通过"
 
+      - name: Test gold scraper functionality
+        env:
+          GITHUB_ACTIONS: true
+        run: |
+          echo "🧪 测试黄金爬虫功能..."
+          python -c "
+          import sys
+          import os
+          sys.path.append('src')
+          
+          try:
+              from gold_scraper import initialize_gold_scraper, get_system_status
+              print('✅ 黄金爬虫模块导入成功')
+              
+              # 初始化系统
+              if initialize_gold_scraper():
+                  print('✅ 黄金爬虫系统初始化成功')
+                  
+                  # 获取系统状态
+                  status = get_system_status()
+                  print(f'📊 系统状态: {status}')
+              else:
+                  print('⚠️ 黄金爬虫系统初始化失败，但不影响主程序运行')
+                  
+          except ImportError as e:
+              print(f'⚠️ 黄金爬虫模块导入失败: {e}')
+              print('⚠️ 将使用API模式运行，不影响主程序功能')
+          except Exception as e:
+              print(f'⚠️ 黄金爬虫测试失败: {e}')
+              print('⚠️ 将使用API模式运行，不影响主程序功能')
+          
+          print('✅ 黄金爬虫功能测试完成')
+          "
+
       - name: Run crawler
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
@@ -54,6 +121,9 @@ jobs:
           DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
           WEWORK_WEBHOOK_URL: ${{ secrets.WEWORK_WEBHOOK_URL }}
           GITHUB_ACTIONS: true
+          # 黄金爬虫相关环境变量
+          GOLD_SCRAPER_ENABLED: true
+          GOLD_SCRAPER_FALLBACK_MODE: true
         run: python main.py
 
       - name: Commit and push if changes
