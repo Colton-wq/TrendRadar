@@ -57,6 +57,22 @@ from .performance_monitor import (
     GoldScraperTimer
 )
 
+# 降级管理
+from .fallback_manager import (
+    FallbackManager,
+    DataSourceWrapper,
+    DataSourceType,
+    DataSourceStatus,
+    get_fallback_manager
+)
+
+# 数据验证
+from .data_validator import (
+    DataValidator,
+    ValidationResult,
+    get_data_validator
+)
+
 __version__ = "1.0.0"
 __author__ = "TrendRadar Team"
 
@@ -94,7 +110,19 @@ __all__ = [
     'GoldScraperPerformanceMonitor',
     'get_gold_scraper_performance_monitor',
     'record_gold_scraper_metric',
-    'GoldScraperTimer'
+    'GoldScraperTimer',
+    
+    # 降级管理
+    'FallbackManager',
+    'DataSourceWrapper',
+    'DataSourceType',
+    'DataSourceStatus',
+    'get_fallback_manager',
+    
+    # 数据验证
+    'DataValidator',
+    'ValidationResult',
+    'get_data_validator'
 ]
 
 
@@ -125,6 +153,12 @@ def initialize_gold_scraper(config_path=None):
         # 初始化性能监控器
         performance_monitor = get_gold_scraper_performance_monitor()
         
+        # 初始化降级管理器
+        fallback_manager = get_fallback_manager()
+        
+        # 初始化数据验证器
+        data_validator = get_data_validator()
+        
         print("黄金爬虫系统初始化成功")
         return True
         
@@ -144,6 +178,7 @@ def get_system_status():
         config = get_gold_scraper_config()
         error_handler = get_gold_scraper_error_handler()
         performance_monitor = get_gold_scraper_performance_monitor()
+        fallback_manager = get_fallback_manager()
         
         return {
             "config_loaded": True,
@@ -151,7 +186,8 @@ def get_system_status():
             "fallback_mode": config.is_fallback_mode(),
             "websites_count": len(config.get_websites_config()),
             "error_stats": error_handler.get_error_stats(),
-            "performance_stats": performance_monitor.get_statistics()
+            "performance_stats": performance_monitor.get_statistics(),
+            "fallback_status": fallback_manager.get_status_summary()
         }
         
     except Exception as e:
@@ -159,3 +195,25 @@ def get_system_status():
             "config_loaded": False,
             "error": str(e)
         }
+
+
+async def fetch_gold_data_with_fallback(api_fetcher=None, scraper_fetcher=None):
+    """
+    使用降级策略获取黄金数据的便捷函数
+    
+    Args:
+        api_fetcher: API数据获取函数
+        scraper_fetcher: 爬虫数据获取函数
+        
+    Returns:
+        Tuple[数据, 数据源, 是否使用了降级]
+    """
+    try:
+        fallback_manager = get_fallback_manager()
+        data_wrapper = DataSourceWrapper(fallback_manager)
+        
+        return await data_wrapper.fetch_data_with_fallback(api_fetcher, scraper_fetcher)
+        
+    except Exception as e:
+        print(f"降级数据获取失败: {e}")
+        return None, "error", False
