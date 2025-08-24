@@ -8,6 +8,70 @@ crawler:
   use_proxy: false # 是否启用代理，false 时为关闭
   default_proxy: "http://127.0.0.1:10086"
 
+# 🔸 黄金价格爬虫配置
+# 为TrendRadar系统提供备用黄金价格数据源
+gold_scraper:
+  enable_gold_scraper: true # 是否启用黄金价格爬虫功能
+  fallback_mode: true # 是否作为API失败时的备用数据源
+  
+  # 爬虫执行配置
+  execution:
+    max_concurrent_parsers: 2 # 最大并发解析器数量
+    parser_timeout: 60 # 单个解析器超时时间（秒）
+    retry_attempts: 2 # 重试次数
+    delay_between_parsers: [5, 10] # 解析器间延迟范围（秒）
+    request_interval: 5000 # 请求间隔（毫秒）
+    
+  # 反爬虫配置
+  anti_detection:
+    enable_user_agent_rotation: true # 启用User-Agent轮换
+    enable_random_delays: true # 启用随机延迟
+    min_delay: 5 # 最小延迟（秒）
+    max_delay: 10 # 最大延迟（秒）
+    
+  # 数据验证配置
+  validation:
+    price_range: [100.0, 10000.0] # 价格合理范围
+    change_range: [-1000.0, 1000.0] # 涨跌额合理范围
+    enable_data_validation: true # 启用数据验证
+    
+  # 目标网站配置
+  websites:
+    - name: "SGE"
+      url: "https://www.sge.com.cn/"
+      enabled: true
+      priority: 1
+      description: "上海黄金交易所"
+      target_contracts: ["Au99.99", "Au(T+D)", "mAu(T+D)", "Au99.95", "Au100g"]
+      
+    - name: "Cngold"
+      url: "https://gold.cngold.org/"
+      enabled: true
+      priority: 2
+      description: "金投网"
+      target_products: ["黄金T+D", "现货黄金", "黄金9999", "纸黄金(人民币)", "纸黄金(美元)"]
+      
+    - name: "Sina"
+      url: "https://finance.sina.com.cn/nmetal/"
+      enabled: true
+      priority: 3
+      description: "新浪财经"
+      target_products: ["XAUUSD", "沪金主力", "黄金T+D", "XAGUSD", "沪银主力", "白银T+D"]
+      
+  # 监控和日志配置
+  monitoring:
+    enable_performance_monitoring: true # 启用性能监控
+    enable_error_tracking: true # 启用错误跟踪
+    log_level: "INFO" # 日志级别: DEBUG, INFO, WARNING, ERROR
+    metrics_collection_interval: 300 # 指标收集间隔（秒）
+    
+  # 健康检查配置
+  health_check:
+    enable_health_check: true # 启用健康检查
+    check_interval: 600 # 检查间隔（秒）
+    failure_threshold: 3 # 失败阈值
+    recovery_threshold: 2 # 恢复阈值
+
 # 🔸 daily（当日汇总模式）
 #   • 推送时机：按时推送
 #   • 显示内容：当日所有匹配新闻 + 新增新闻区域
