@@ -1,0 +1,21 @@
+{
+  "name": "trendradar-gold-scraper",
+  "version": "1.0.0",
+  "description": "TrendRadar Gold Price Scraper - Playwright support for GitHub Actions",
+  "private": true,
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "install-playwright": "playwright install chromium",
+    "test-playwright": "playwright --version"
+  },
+  "keywords": [
+    "trendradar",
+    "gold-price",
+    "scraper",
+    "playwright"
+  ],
+  "author": "TrendRadar Team",
+  "license": "MIT"
+}
