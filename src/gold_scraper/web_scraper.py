@@ -11,7 +11,6 @@ import random
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass
 import logging
 
 try:
@@ -21,21 +20,18 @@ except ImportError:
     Browser = None
     Page = None
 
-
-@dataclass
-class GoldPriceData:
-    """黄金价格数据结构"""
-    source: str
-    symbol: str
-    price: float
-    change: float
-    change_percent: str
-    timestamp: str
-    currency: str = "CNY"
-    volume: Optional[str] = None
-    high: Optional[float] = None
-    low: Optional[float] = None
-    open_price: Optional[float] = None
+# 导入专用解析器
+try:
+    from .parsers import SGEParser, CngoldParser, SinaParser, GoldPriceData
+except ImportError:
+    # 兼容性导入
+    try:
+        from parsers import SGEParser, CngoldParser, SinaParser, GoldPriceData
+    except ImportError:
+        SGEParser = None
+        CngoldParser = None
+        SinaParser = None
+        GoldPriceData = None
 
 
 class AntiDetectionManager:
@@ -71,195 +67,45 @@ class AntiDetectionManager:
         }
 
 
-class GoldPriceScraper:
-    """黄金价格爬虫基类"""
-    
-    def __init__(self, name: str, base_url: str):
-        self.name = name
-        self.base_url = base_url
-        self.logger = logging.getLogger(f"GoldScraper.{name}")
-        
-    async def scrape(self, page: Page) -> List[GoldPriceData]:
-        """抽象方法：爬取数据"""
-        raise NotImplementedError("Subclasses must implement scrape method")
-    
-    def clean_price_text(self, text: str) -> float:
-        """清理价格文本，转换为浮点数"""
-        if not text or text in ["--", "N/A", ""]:
-            return 0.0
-        
-        # 移除千分位分隔符和其他字符
-        cleaned = text.replace(",", "").replace("￥", "").replace("$", "").strip()
-        
-        try:
-            return float(cleaned)
-        except ValueError:
-            self.logger.warning(f"无法解析价格: {text}")
-            return 0.0
-    
-    def clean_change_text(self, text: str) -> Tuple[float, str]:
-        """清理涨跌数据，返回涨跌额和涨跌幅"""
-        if not text or text in ["--", "N/A", ""]:
-            return 0.0, "0.00%"
-        
-        # 提取数值部分
-        import re
-        
-        # 匹配涨跌额（可能包含正负号和箭头）
-        change_match = re.search(r'([+-]?\d+\.?\d*)', text)
-        change = float(change_match.group(1)) if change_match else 0.0
-        
-        # 匹配涨跌幅
-        percent_match = re.search(r'([+-]?\d+\.?\d*)%', text)
-        if percent_match:
-            percent = f"{percent_match.group(1)}%"
-        else:
-            percent = "0.00%"
-        
-        return change, percent
-
-
-class SGEScraper(GoldPriceScraper):
-    """上海黄金交易所爬虫"""
-    
-    def __init__(self):
-        super().__init__("SGE", "https://www.sge.com.cn/")
-        self.data_url = "https://www.sge.com.cn/sjzx/quotation_daily_new"
-        
-    async def scrape(self, page: Page) -> List[GoldPriceData]:
-        """爬取上海黄金交易所数据"""
-        try:
-            # 构建当日数据URL
-            today = datetime.now().strftime("%Y-%m-%d")
-            url = f"{self.data_url}?start_date={today}&end_date={today}"
-            
-            await page.goto(url, wait_until="networkidle")
-            
-            # 等待表格加载
-            await page.wait_for_selector("table", timeout=10000)
-            
-            # 提取表格数据
-            rows = await page.query_selector_all("table tbody tr:not(:first-child)")
-            
-            results = []
-            for row in rows:
-                cells = await row.query_selector_all("td")
-                if len(cells) >= 8:
-                    try:
-                        date_text = await cells[0].inner_text()
-                        contract = await cells[1].inner_text()
-                        open_price = self.clean_price_text(await cells[2].inner_text())
-                        high_price = self.clean_price_text(await cells[3].inner_text())
-                        low_price = self.clean_price_text(await cells[4].inner_text())
-                        close_price = self.clean_price_text(await cells[5].inner_text())
-                        change_text = await cells[6].inner_text()
-                        change_percent_text = await cells[7].inner_text()
-                        
-                        change, change_percent = self.clean_change_text(f"{change_text} {change_percent_text}")
-                        
-                        # 只处理主要黄金合约
-                        if contract in ["Au99.99", "Au(T+D)", "mAu(T+D)", "Au99.95", "Au100g"]:
-                            gold_data = GoldPriceData(
-                                source="sge",
-                                symbol=contract,
-                                price=close_price,
-                                change=change,
-                                change_percent=change_percent,
-                                timestamp=datetime.now().isoformat(),
-                                currency="CNY",
-                                high=high_price,
-                                low=low_price,
-                                open_price=open_price
-                            )
-                            results.append(gold_data)
-                            
-                    except Exception as e:
-                        self.logger.error(f"解析SGE数据行失败: {e}")
-                        continue
-            
-            self.logger.info(f"SGE爬取成功，获取 {len(results)} 条数据")
-            return results
-            
-        except Exception as e:
-            self.logger.error(f"SGE爬取失败: {e}")
-            return []
-
-
-class CngoldScraper(GoldPriceScraper):
-    """金投网爬虫"""
-    
-    def __init__(self):
-        super().__init__("Cngold", "https://gold.cngold.org/")
-        
-    async def scrape(self, page: Page) -> List[GoldPriceData]:
-        """爬取金投网数据"""
-        try:
-            await page.goto(self.base_url, wait_until="networkidle")
-            
-            # 等待表格加载
-            await page.wait_for_selector("table", timeout=10000)
-            
-            # 获取所有表格
-            tables = await page.query_selector_all("table")
-            
-            results = []
-            target_products = ["黄金T+D", "现货黄金", "黄金9999", "纸黄金(人民币)", "纸黄金(美元)"]
-            
-            for table_index, table in enumerate(tables[:8]):  # 只处理前8个表格
-                try:
-                    rows = await table.query_selector_all("tbody tr")
-                    
-                    for row in rows:
-                        cells = await row.query_selector_all("td")
-                        if len(cells) >= 3:
-                            name = await cells[0].inner_text()
-                            price_text = await cells[1].inner_text()
-                            change_text = await cells[2].inner_text()
-                            
-                            if name.strip() in target_products:
-                                price = self.clean_price_text(price_text)
-                                change, change_percent = self.clean_change_text(change_text)
-                                
-                                # 判断货币类型
-                                currency = "USD" if "美元" in name else "CNY"
-                                
-                                gold_data = GoldPriceData(
-                                    source="cngold",
-                                    symbol=name.strip(),
-                                    price=price,
-                                    change=change,
-                                    change_percent=change_percent,
-                                    timestamp=datetime.now().isoformat(),
-                                    currency=currency
-                                )
-                                results.append(gold_data)
-                                
-                except Exception as e:
-                    self.logger.error(f"解析Cngold表格 {table_index} 失败: {e}")
-                    continue
-            
-            self.logger.info(f"Cngold爬取成功，获取 {len(results)} 条数据")
-            return results
-            
-        except Exception as e:
-            self.logger.error(f"Cngold爬取失败: {e}")
-            return []
-
-
 class WebScrapingManager:
     """网页爬虫管理器"""
     
     def __init__(self):
         self.logger = logging.getLogger("WebScrapingManager")
-        self.scrapers = [
-            SGEScraper(),
-            CngoldScraper()
-        ]
+        
+        # 初始化解析器
+        self.parsers = []
+        if SGEParser:
+            self.parsers.append(SGEParser())
+        if CngoldParser:
+            self.parsers.append(CngoldParser())
+        if SinaParser:
+            self.parsers.append(SinaParser())
+        
+        if not self.parsers:
+            self.logger.error("未找到可用的解析器")
+        
+        # 配置信息
+        self.config = {
+            "max_concurrent_parsers": 2,  # 最大并发解析器数量
+            "parser_timeout": 60,         # 单个解析器超时时间（秒）
+            "retry_attempts": 2,          # 重试次数
+            "delay_between_parsers": (5, 10)  # 解析器间延迟范围
+        }
         
     async def scrape_all_sources(self) -> List[GoldPriceData]:
-        """爬取所有数据源"""
+        """
+        爬取所有数据源
+        
+        Returns:
+            所有解析器获取的数据列表
+        """
         if not async_playwright:
             self.logger.error("Playwright未安装，无法使用网页爬虫功能")
+            return []
+        
+        if not self.parsers:
+            self.logger.error("没有可用的解析器")
             return []
         
         all_results = []
@@ -268,44 +114,159 @@ class WebScrapingManager:
             # 启动浏览器
             browser = await p.chromium.launch(
                 headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage']
+                args=[
+                    '--no-sandbox', 
+                    '--disable-dev-shm-usage',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-extensions'
+                ]
             )
             
             try:
-                for scraper in self.scrapers:
+                # 并发处理解析器（限制并发数量）
+                semaphore = asyncio.Semaphore(self.config["max_concurrent_parsers"])
+                tasks = []
+                
+                for parser in self.parsers:
+                    task = self._scrape_with_parser(browser, parser, semaphore)
+                    tasks.append(task)
+                
+                # 等待所有任务完成
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # 处理结果
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        self.logger.error(f"解析器 {self.parsers[i].name} 执行异常: {result}")
+                    elif isinstance(result, list):
+                        all_results.extend(result)
+                        self.logger.info(f"解析器 {self.parsers[i].name} 获取 {len(result)} 条数据")
+                    
+            finally:
+                await browser.close()
+        
+        # 数据去重和验证
+        validated_results = self._validate_and_deduplicate(all_results)
+        
+        self.logger.info(f"所有数据源爬取完成，共获取 {len(validated_results)} 条有效数据")
+        return validated_results
+    
+    async def _scrape_with_parser(
+        self, 
+        browser: Browser, 
+        parser, 
+        semaphore: asyncio.Semaphore
+    ) -> List[GoldPriceData]:
+        """
+        使用指定解析器爬取数据
+        
+        Args:
+            browser: 浏览器实例
+            parser: 解析器实例
+            semaphore: 并发控制信号量
+            
+        Returns:
+            解析器获取的数据列表
+        """
+        async with semaphore:
+            for attempt in range(self.config["retry_attempts"] + 1):
+                try:
+                    # 创建新页面
+                    page = await browser.new_page()
+                    
                     try:
-                        # 创建新页面
-                        page = await browser.new_page()
-                        
                         # 设置反爬虫措施
                         await page.set_user_agent(AntiDetectionManager.get_random_user_agent())
                         await page.set_extra_http_headers(AntiDetectionManager.get_headers())
                         
-                        # 爬取数据
-                        self.logger.info(f"开始爬取 {scraper.name}")
-                        results = await scraper.scrape(page)
-                        all_results.extend(results)
+                        # 设置超时
+                        page.set_default_timeout(self.config["parser_timeout"] * 1000)
                         
-                        # 关闭页面
+                        # 爬取数据
+                        self.logger.info(f"开始爬取 {parser.name} (尝试 {attempt + 1})")
+                        
+                        results = await asyncio.wait_for(
+                            parser.parse_data(page),
+                            timeout=self.config["parser_timeout"]
+                        )
+                        
+                        if results:
+                            self.logger.info(f"{parser.name} 爬取成功，获取 {len(results)} 条数据")
+                            return results
+                        else:
+                            self.logger.warning(f"{parser.name} 未获取到数据")
+                            
+                    finally:
                         await page.close()
                         
-                        # 随机延迟
-                        delay = AntiDetectionManager.get_random_delay()
-                        self.logger.info(f"{scraper.name} 爬取完成，等待 {delay:.2f} 秒")
+                    # 随机延迟
+                    if attempt < self.config["retry_attempts"]:
+                        delay = AntiDetectionManager.get_random_delay(*self.config["delay_between_parsers"])
                         await asyncio.sleep(delay)
                         
-                    except Exception as e:
-                        self.logger.error(f"爬取 {scraper.name} 失败: {e}")
-                        continue
-                        
-            finally:
-                await browser.close()
+                except asyncio.TimeoutError:
+                    self.logger.warning(f"{parser.name} 超时 (尝试 {attempt + 1})")
+                except Exception as e:
+                    self.logger.error(f"{parser.name} 爬取失败 (尝试 {attempt + 1}): {e}")
+                    
+                if attempt < self.config["retry_attempts"]:
+                    # 重试前等待
+                    retry_delay = random.uniform(2, 5)
+                    await asyncio.sleep(retry_delay)
+            
+            self.logger.error(f"{parser.name} 所有尝试均失败")
+            return []
+    
+    def _validate_and_deduplicate(self, data_list: List[GoldPriceData]) -> List[GoldPriceData]:
+        """
+        验证和去重数据
         
-        self.logger.info(f"所有数据源爬取完成，共获取 {len(all_results)} 条数据")
-        return all_results
+        Args:
+            data_list: 原始数据列表
+            
+        Returns:
+            验证和去重后的数据列表
+        """
+        if not data_list:
+            return []
+        
+        # 按 (source, symbol) 分组去重
+        unique_data = {}
+        for data in data_list:
+            if not isinstance(data, GoldPriceData):
+                continue
+                
+            # 基本验证
+            if not data.symbol or data.price <= 0:
+                self.logger.warning(f"跳过无效数据: {data}")
+                continue
+            
+            key = (data.source, data.symbol)
+            if key not in unique_data:
+                unique_data[key] = data
+            else:
+                # 保留时间戳更新的数据
+                if data.timestamp > unique_data[key].timestamp:
+                    unique_data[key] = data
+        
+        results = list(unique_data.values())
+        
+        # 按数据源和优先级排序
+        results.sort(key=lambda x: (x.source, x.symbol))
+        
+        self.logger.info(f"数据验证完成，去重后保留 {len(results)} 条数据")
+        return results
     
     def format_for_trendradar(self, gold_data_list: List[GoldPriceData]) -> Dict[str, Any]:
-        """格式化数据以兼容TrendRadar现有接口"""
+        """
+        格式化数据以兼容TrendRadar现有接口
+        
+        Args:
+            gold_data_list: 黄金价格数据列表
+            
+        Returns:
+            TrendRadar兼容格式的数据字典
+        """
         if not gold_data_list:
             return {}
         
@@ -329,23 +290,93 @@ class WebScrapingManager:
                 "mobileUrl": ""
             }
             
-            if data.high:
+            # 添加可选字段
+            if hasattr(data, 'high') and data.high:
                 item["high"] = data.high
-            if data.low:
+            if hasattr(data, 'low') and data.low:
                 item["low"] = data.low
-            if data.open_price:
+            if hasattr(data, 'open_price') and data.open_price:
                 item["open"] = data.open_price
+            if hasattr(data, 'volume') and data.volume:
+                item["volume"] = data.volume
+            if hasattr(data, 'buy_price') and data.buy_price:
+                item["buy_price"] = data.buy_price
+            if hasattr(data, 'sell_price') and data.sell_price:
+                item["sell_price"] = data.sell_price
                 
             grouped_data[source].append(item)
         
         return grouped_data
+    
+    async def test_all_parsers(self) -> Dict[str, bool]:
+        """
+        测试所有解析器的连接状态
+        
+        Returns:
+            解析器名称到连接状态的映射
+        """
+        if not async_playwright:
+            self.logger.error("Playwright未安装，无法测试解析器")
+            return {}
+        
+        results = {}
+        
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            
+            try:
+                for parser in self.parsers:
+                    try:
+                        page = await browser.new_page()
+                        await page.set_user_agent(AntiDetectionManager.get_random_user_agent())
+                        
+                        # 测试连接
+                        if hasattr(parser, 'test_connection'):
+                            success = await parser.test_connection(page)
+                        else:
+                            # 简单测试：尝试访问基础URL
+                            await page.goto(parser.base_url, timeout=10000)
+                            success = True
+                        
+                        results[parser.name] = success
+                        await page.close()
+                        
+                    except Exception as e:
+                        self.logger.error(f"测试 {parser.name} 连接失败: {e}")
+                        results[parser.name] = False
+                        
+            finally:
+                await browser.close()
+        
+        return results
+    
+    def get_parser_info(self) -> List[Dict[str, Any]]:
+        """
+        获取所有解析器的信息
+        
+        Returns:
+            解析器信息列表
+        """
+        info_list = []
+        for parser in self.parsers:
+            if hasattr(parser, 'get_parser_config'):
+                info = parser.get_parser_config()
+            else:
+                info = {
+                    "name": parser.name,
+                    "base_url": parser.base_url
+                }
+            info_list.append(info)
+        
+        return info_list
 
 
 # 导出主要类和函数
 __all__ = [
-    'GoldPriceData',
     'WebScrapingManager',
-    'AntiDetectionManager',
-    'SGEScraper',
-    'CngoldScraper'
+    'AntiDetectionManager'
 ]
+
+# 兼容性导出
+if GoldPriceData:
+    __all__.append('GoldPriceData')
