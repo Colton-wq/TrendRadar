@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendRadar - 热点新闻与黄金价格分析</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            margin: 0; 
+            padding: 16px; 
+            background: #fafafa;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+        }
+        
+        .header-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            font-size: 14px;
+            opacity: 0.95;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-label {
+            display: block;
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 24px;
+        }
+        
+        /* Gold Price Monitoring Styles */
+        .gold-monitor-section {
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .gold-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .gold-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .gold-icon {
+            font-size: 24px;
+        }
+        
+        .gold-title h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .gold-timestamp {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        .gold-summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .gold-card {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+        
+        .gold-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .gold-card.positive {
+            border-left: 4px solid #10b981;
+        }
+        
+        .gold-card.negative {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .gold-card.neutral {
+            border-left: 4px solid #6b7280;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .symbol-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .symbol-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1a1a1a;
+        }
+        
+        .alerts-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 16px;
+            text-align: center;
+        }
+        
+        .trend-icon {
+            font-size: 20px;
+        }
+        
+        .card-body {
+            margin-bottom: 16px;
+        }
+        
+        .price-info {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .current-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+        
+        .currency {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .change-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .change-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .change-value.positive {
+            color: #10b981;
+        }
+        
+        .change-value.negative {
+            color: #ef4444;
+        }
+        
+        .change-value.neutral {
+            color: #6b7280;
+        }
+        
+        .change-period {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .trend-label, .volatility-label {
+            font-weight: 500;
+        }
+        
+        .trend-value, .volatility-value {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .gold-charts-section {
+            margin-bottom: 32px;
+        }
+        
+        .gold-charts-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .charts-container {
+            background: #f9fafb;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .gold-alerts-section {
+            margin-bottom: 32px;
+        }
+        
+        .gold-alerts-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .gold-alerts-empty {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            color: #166534;
+            font-weight: 500;
+        }
+        
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .alert-item {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .alert-item.alert-high {
+            border-left: 4px solid #ea580c;
+            background: #fff7ed;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .alert-icon {
+            font-size: 16px;
+        }
+        
+        .alert-symbol {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .alert-severity {
+            background: rgba(0,0,0,0.1);
+            color: #1a1a1a;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .alert-time {
+            margin-left: auto;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .alert-message {
+            font-size: 14px;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        
+        .alert-details {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+        }
+        
+        .price-change {
+            font-weight: 600;
+            color: #ea580c;
+        }
+        
+        .price-current {
+            color: #666;
+        }
+        
+        /* News section styles (simplified) */
+        .news-section {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 2px solid #f0f0f0;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0 0 20px 0;
+        }
+        
+        .news-item {
+            margin-bottom: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        
+        .news-title {
+            font-size: 15px;
+            line-height: 1.4;
+            color: #1a1a1a;
+            margin: 0;
+        }
+        
+        .news-link {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        
+        .news-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header-info {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .gold-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .gold-summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-footer {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">TrendRadar - 热点新闻与黄金价格分析</div>
+            <div class="header-info">
+                <div class="info-item">
+                    <span class="info-label">报告类型</span>
+                    <span class="info-value">综合分析</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">新闻总数</span>
+                    <span class="info-value">517 条</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">黄金监控</span>
+                    <span class="info-value">2 品种</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">生成时间</span>
+                    <span class="info-value">08-24 11:17</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Gold Price Monitoring Section -->
+            <div class="gold-monitor-section">
+                <div class="gold-header">
+                    <div class="gold-title">
+                        <span class="gold-icon">💰</span>
+                        <h2>黄金价格监控</h2>
+                    </div>
+                    <div class="gold-timestamp">
+                        更新时间: 2025-08-24 11:17:30
+                    </div>
+                </div>
+                
+                <!-- Price Summary Cards -->
+                <div class="gold-summary-cards">
+                    <div class="gold-card positive">
+                        <div class="card-header">
+                            <div class="symbol-info">
+                                <span class="symbol-name">XAUUSD</span>
+                            </div>
+                            <span class="trend-icon">📈</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="price-info">
+                                <span class="current-price">2,050.75</span>
+                                <span class="currency">USD</span>
+                            </div>
+                            <div class="change-info">
+                                <span class="change-value positive">+1.25%</span>
+                                <span class="change-period">(1h)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="trend-info">
+                                <span class="trend-label">趋势:</span>
+                                <span class="trend-value">上涨</span>
+                            </div>
+                            <div class="volatility-info">
+                                <span class="volatility-label">波动:</span>
+                                <span class="volatility-value">2.5%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="gold-card negative">
+                        <div class="card-header">
+                            <div class="symbol-info">
+                                <span class="symbol-name">AU9999</span>
+                                <span class="alerts-badge">1</span>
+                            </div>
+                            <span class="trend-icon">📉</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="price-info">
+                                <span class="current-price">485.60</span>
+                                <span class="currency">CNY</span>
+                            </div>
+                            <div class="change-info">
+                                <span class="change-value negative">-0.85%</span>
+                                <span class="change-period">(1h)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="trend-info">
+                                <span class="trend-label">趋势:</span>
+                                <span class="trend-value">下跌</span>
+                            </div>
+                            <div class="volatility-info">
+                                <span class="volatility-label">波动:</span>
+                                <span class="volatility-value">1.8%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Price Charts -->
+                <div class="gold-charts-section">
+                    <h3>价格走势图表</h3>
+                    <div class="charts-container">
+                        <canvas id="goldPriceChart" width="400" height="200"></canvas>
+                        <p style="color: #666; font-size: 14px; margin: 16px 0 0 0;">
+                            📊 实时价格图表 (使用Chart.js渲染)
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Alerts Section -->
+                <div class="gold-alerts-section">
+                    <h3>🚨 价格预警</h3>
+                    <div class="alerts-list">
+                        <div class="alert-item alert-high">
+                            <div class="alert-header">
+                                <span class="alert-icon">🔴</span>
+                                <span class="alert-symbol">XAUUSD</span>
+                                <span class="alert-severity">HIGH</span>
+                                <span class="alert-time">11:15</span>
+                            </div>
+                            <div class="alert-body">
+                                <div class="alert-message">黄金价格大幅上涨，突破关键阻力位</div>
+                                <div class="alert-details">
+                                    <span class="price-change">+5.15%</span>
+                                    <span class="price-current">$2,050.75</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- News Section (Simplified) -->
+            <div class="news-section">
+                <h2 class="section-title">📰 热点新闻分析</h2>
+                <div class="news-item">
+                    <div class="news-title">
+                        <a href="#" class="news-link">鲍威尔暗示美联储可能降息，美股集体大涨，美元跳水，黄金直线拉升</a>
+                    </div>
+                </div>
+                <div class="news-item">
+                    <div class="news-title">
+                        <a href="#" class="news-link">中国空间站"炼丹炉"突破3100℃</a>
+                    </div>
+                </div>
+                <div class="news-item">
+                    <div class="news-title">
+                        <a href="#" class="news-link">工信部：有序引导算力设施建设，加快突破GPU芯片等关键核心技术</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Gold Price Chart JavaScript
+        function initializeGoldChart() {
+            const canvas = document.getElementById('goldPriceChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Simple chart implementation
+            drawSimpleChart(ctx);
+        }
+        
+        function drawSimpleChart(ctx) {
+            const canvas = ctx.canvas;
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Chart settings
+            const padding = 40;
+            const chartWidth = width - 2 * padding;
+            const chartHeight = height - 2 * padding;
+            
+            // Draw background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(padding, padding, chartWidth, chartHeight);
+            
+            // Draw border
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(padding, padding, chartWidth, chartHeight);
+            
+            // Draw title
+            ctx.fillStyle = '#1f2937';
+            ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('黄金价格对比', width / 2, 25);
+            
+            // Sample data
+            const data = [
+                { symbol: 'XAUUSD', price: 2050.75, color: '#10b981' },
+                { symbol: 'AU9999', price: 485.60, color: '#ef4444' }
+            ];
+            
+            const barWidth = chartWidth / data.length * 0.6;
+            const barSpacing = chartWidth / data.length;
+            const maxPrice = Math.max(...data.map(d => d.price));
+            
+            data.forEach((item, index) => {
+                // Calculate bar position
+                const x = padding + index * barSpacing + (barSpacing - barWidth) / 2;
+                const barHeight = (item.price / maxPrice) * chartHeight * 0.8;
+                const y = padding + chartHeight - barHeight;
+                
+                // Draw bar
+                ctx.fillStyle = item.color;
+                ctx.fillRect(x, y, barWidth, barHeight);
+                
+                // Draw price label
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(item.price.toFixed(0), x + barWidth / 2, y - 5);
+                
+                // Draw symbol label
+                ctx.fillText(item.symbol, x + barWidth / 2, padding + chartHeight + 15);
+            });
+        }
+        
+        // Initialize chart when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGoldChart();
+        });
+    </script>
+</body>
+</html>
